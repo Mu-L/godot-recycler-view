@@ -467,6 +467,14 @@ private:
 	// a RESIZED notification for the size being finalized). The running layout
 	// re-runs once afterwards so a size/state change is never dropped.
 	bool m_layout_requested_again = false;
+	// True between notify_data_set_changed and the next layout. A full data-set
+	// change invalidates every position without an incremental op to mark the
+	// children (notify_data_changed clears the queued ops), so the next update
+	// pass re-binds every retained child — otherwise a holder kept at a
+	// still-valid position shows stale content. Android moves all attached
+	// views to scrap on a data set change; this flag drives the equivalent
+	// rebind in process_pending_updates.
+	bool m_full_data_change_pending = false;
 
 	// Tracked child ViewHolders (in tree order), for recycling on scroll.
 	Vector<Ref<ViewHolder>> m_children;

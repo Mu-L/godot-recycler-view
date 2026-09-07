@@ -1458,6 +1458,10 @@ void RecyclerView::notify_data_changed() {
 	// extents (incremental notify_* ops shift the array instead, see
 	// process_pending_updates).
 	clear_measured_extents();
+	// No incremental op will mark the retained children (the clear above
+	// dropped any queued ops), so flag the next update pass to re-bind every
+	// bound child — the layout must not reuse a kept holder's stale binding.
+	m_full_data_change_pending = true;
 	mark_data_changed();
 	defer_layout();
 }
@@ -2043,7 +2047,7 @@ Vector2 RecyclerView::get_viewport_size() const {
 }
 
 void RecyclerView::process_pending_updates() {
-	if (!m_adapter_helper->has_pending_updates()) {
+	if (!m_adapter_helper->has_pending_updates() && !m_full_data_change_pending) {
 		return;
 	}
 	// Keep the cache's positions consistent, then transform the attached holders.
@@ -2054,6 +2058,26 @@ void RecyclerView::process_pending_updates() {
 	// below the scroll offset and make the layout jump as rows re-measure).
 	offset_measured_extents_for_ops(m_adapter_helper->get_pending_ops());
 	m_adapter_helper->consume_updates_in_one_pass(m_children);
+
+	// Full data-set change (notify_data_set_changed): no op marks the retained
+	// children, so mark every bound child for rebind here; the rebind pass
+	// below refreshes them. Only children still within the new item count are
+	// marked — the layout recycles the out-of-range ones without rebinding
+	// (binding them would read data past the new list's end). Unbound holders
+	// (first mount deferred to the ready signal) are left alone too: their bind
+	// runs after the data change and reads the current list anyway.
+	if (m_full_data_change_pending) {
+		m_full_data_change_pending = false;
+		if (m_adapter.is_valid()) {
+			const int item_count = m_adapter->get_item_count();
+			for (int i = 0; i < m_children.size(); i++) {
+				const Ref<ViewHolder> &holder = m_children[i];
+				if (holder->is_bound() && holder->get_position() < item_count) {
+					holder->add_flags(ViewHolder::FLAG_UPDATE);
+				}
+			}
+		}
+	}
 
 	// FLAG_UPDATE is set here (and cleared by the rebind below), so capture the
 	// updated holders for the change animation before the rebind.
