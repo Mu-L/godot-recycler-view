@@ -110,3 +110,73 @@ func test_scroll_into_prefetched_rows_keeps_content() -> void:
 		assert_that(_label_text(rv, pos)).is_equal("item %d" % pos)
 	rv.free_items()
 	rv.free()
+
+
+# Adapter whose items bind fit_content wrapped text (the pattern behind the
+# quack-under-pressure report). Regression contract: the first bind must see
+# the slot's width, so width-sensitive content shapes honestly — never at the
+# scene's stale width, which inflates the minimum past the slot extent and
+# leaves the item oversized until the next scroll.
+#
+# Note on environments: Godot runs an item scene's ready pass at the end of
+# the frame when the mount happens inside a queue flush (this test env), so
+# the deferred bind there already runs after the mount layout sized the item
+# — that path was never broken. The broken path is the synchronous bind (the
+# ready pass already ran at add_child), where the bind precedes the mount
+# layout; that env is covered by the real-game driver (quack-under-pressure),
+# and this test pins the same contract (width at bind + slot size) for
+# whichever path the suite runs on.
+class WrappedTextAdapter extends Adapter:
+	var items: Array = []
+	var extent := 100
+	var width_at_bind: float = -1.0
+
+	func _get_item_count() -> int:
+		return items.size()
+
+	func _get_item_extent(_position: int) -> int:
+		return extent
+
+	func _create_item(parent: Control, view_type: int) -> ViewHolder:
+		var vh := ViewHolder.new()
+		var root := VBoxContainer.new()
+		root.custom_minimum_size = Vector2(0, extent)
+		var label := RichTextLabel.new()
+		label.fit_content = true
+		label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		root.add_child(label)
+		vh.set_control(root)
+		return vh
+
+	func _bind_item(holder: ViewHolder, position: int) -> void:
+		var root: VBoxContainer = holder.get_control()
+		width_at_bind = root.size.x
+		(root.get_child(0) as RichTextLabel).text = (
+				"a long line of words that wraps onto several lines when shaped "
+				+ "at a narrow width but stays within the extent at three hundred pixels")
+
+
+func test_fresh_mount_binds_at_slot_width_and_holds_slot() -> void:
+	# The first bind shapes the item's content: it must happen at the slot's
+	# width (the RV presets the subtree's cross size before the bind), and
+	# the mounted item must hold its slot size from the first frames.
+	get_window().size = Vector2i(1920, 1080)
+	get_window().content_scale_size = Vector2i(1920, 1080)
+	await get_tree().process_frame
+	var rv := RecyclerView.new()
+	rv.position = Vector2(0, 0)
+	rv.set_size(Vector2(300, 300))
+	var adapter := WrappedTextAdapter.new()
+	adapter.items = ["a"]
+	get_tree().root.add_child(rv)
+	rv.set_adapter(adapter)
+	rv.set_layout(LinearLayoutManager.new())
+	await get_tree().process_frame
+	await get_tree().process_frame
+	await get_tree().process_frame
+	assert_that(adapter.width_at_bind).is_equal(300.0)
+	for i in rv.get_child_holder_count():
+		var c: Control = rv.get_child_holder_at(i).get_control()
+		assert_that(c.size).is_equal(Vector2(300, 100))
+	rv.free_items()
+	rv.free()

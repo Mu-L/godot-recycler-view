@@ -1609,6 +1609,35 @@ void RecyclerView::add_item_view(const Ref<ViewHolder> &p_holder) {
 		// right after the mount — binding now would run _bind_item against an
 		// unready scene (a scene item refreshing its labels hits null refs).
 		// Defer the first bind to the control's ready signal.
+		// A fresh mount binds content that shapes at the control's CURRENT
+		// width — the scene's saved one, not the slot's cross size the mount
+		// layout assigns a moment later. Width-sensitive content (fit_content
+		// wrapped text) shaped at the wrong width inflates its minimum past
+		// the slot extent, and Godot's set_size then clamps the item to that
+		// inflated size. Preset the subtree's cross size to the slot's before
+		// the bind so the content shapes at its real width (same helper the
+		// auto-measure path uses before measuring). Reuses are skipped: they
+		// were sized by their slot and bind during a scroll, whose own
+		// layouts re-assert.
+		if (!p_holder->has_mounted_once()) {
+			preset_mount_cross_size(p_holder);
+			// Event-driven backstop for slot sizes: Godot emits
+			// minimum_size_changed whenever this item's content minimum
+			// changes (a deferred fit_content re-shape, a late font/theme
+			// swap, a rebind with different content). A Container item root
+			// grows to its (possibly width-inflated) minimum past the slot
+			// the layout assigned, so re-assert on every such change. The
+			// connection lives on the control for its whole lifetime (it
+			// survives recycling and covers later rebinds too); once the
+			// minimum stops changing there are no signals and no further
+			// layouts — nothing polls.
+			if (control != nullptr) {
+				Callable relayout = callable_mp(this, &RecyclerView::_on_item_minimum_size_changed);
+				if (!control->is_connected("minimum_size_changed", relayout)) {
+					control->connect("minimum_size_changed", relayout);
+				}
+			}
+		}
 		if (m_adapter.is_valid() && !p_holder->is_bound()) {
 			// An off-tree RV (build-time layout, unit tests) never runs ready
 			// signals, so a first mount there must bind synchronously like
@@ -1638,10 +1667,13 @@ void RecyclerView::_on_item_ready(const Ref<ViewHolder> &p_holder) {
 		return;
 	}
 	m_adapter->bind_view_holder(p_holder, p_holder->get_position());
-	// Auto-measure: the layout measured this row from empty content (the bind
-	// could not happen before the ready pass). Drop its measurement and re-run
-	// the layout so the slot follows the bound content.
-	if (m_auto_measure_items && m_layout.is_valid()) {
+	if (!m_layout.is_valid()) {
+		return;
+	}
+	if (m_auto_measure_items) {
+		// Auto-measure: the layout measured this row from empty content (the
+		// bind could not happen before the ready pass). Drop its measurement
+		// and re-run the layout so the slot follows the bound content.
 		const int pos = p_holder->get_position();
 		if (pos >= 0 && pos < (int)m_measured_extents.size()) {
 			m_measured_extents.write[pos] = 0;
@@ -1649,6 +1681,45 @@ void RecyclerView::_on_item_ready(const Ref<ViewHolder> &p_holder) {
 		}
 		m_layout->on_data_changed();
 		request_layout();
+		return;
+	}
+	// Fixed-extent mode: the deferred bind's content minimum changes fire the
+	// minimum_size_changed handler connected at mount (see add_item_view),
+	// which defers a re-assert — nothing else needed here.
+}
+
+void RecyclerView::_on_item_minimum_size_changed() {
+	// See the connection site in add_item_view: an item's content minimum
+	// changed after a layout assigned its slot. Godot's set_size clamps up to
+	// the minimum, so a grown minimum keeps the item past its slot until a
+	// layout re-asserts it. Defer one — but only while idle: during a
+	// drag/fling every scroll frame re-asserts anyway, and an extra layout
+	// would just duplicate that pass. Once the minimum stops changing, no
+	// signals fire and the RV stays quiet (no polling).
+	if (m_scroll_state == SCROLL_STATE_IDLE) {
+		defer_layout();
+	}
+}
+
+void RecyclerView::preset_mount_cross_size(const Ref<ViewHolder> &p_holder) {
+	// Presets the item subtree's cross-axis size to the mount slot's before
+	// the first bind (see the call site in add_item_view). No-op when the RV
+	// has no layout yet or the control is off-tree (the min/max cache
+	// invalidation inside preset_item_cross_size needs the tree).
+	if (m_layout.is_null()) {
+		return;
+	}
+	Control *control = p_holder->get_control();
+	if (control == nullptr || !control->is_inside_tree()) {
+		return;
+	}
+	const bool vertical = m_layout->can_scroll_vertically();
+	const Vector2 viewport = get_viewport_size();
+	const int pos = p_holder->get_position();
+	const Vector4 insets = get_item_insets(pos);
+	const float cross = vertical ? viewport.x - insets.x - insets.z : viewport.y - insets.y - insets.w;
+	if (cross > 0.0f) {
+		preset_item_cross_size(control, cross, vertical);
 	}
 }
 

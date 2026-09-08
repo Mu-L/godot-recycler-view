@@ -335,6 +335,22 @@ private:
 	// this one-shot handler to the control's ready signal for that first mount;
 	// the deferred bind runs here, with the scene initialized.
 	void _on_item_ready(const Ref<ViewHolder> &p_holder);
+	// Presets the item subtree's cross-axis size to the mount slot's before a
+	// fresh item's first bind: the bind shapes width-sensitive content
+	// (fit_content wrapped text) at the control's current width, and shaping
+	// at the scene's (wrong) width inflates the content minimum past the
+	// slot — Godot's set_size then clamps the item to the inflated size.
+	// Used by the synchronous first bind in add_item_view (same helper the
+	// auto-measure path uses before measuring).
+	void preset_mount_cross_size(const Ref<ViewHolder> &p_holder);
+	// Event-driven slot re-assert: connected to every mounted item control's
+	// minimum_size_changed (once, at its first mount; the connection survives
+	// recycling and covers later rebinds). Godot emits the signal whenever the
+	// item's content minimum changes (deferred fit_content re-shape, late
+	// font/theme swap, a rebind), and a grown minimum keeps the item past its
+	// slot until a layout re-asserts it — so defer one. No signals, no work:
+	// once the minimum is stable the RV stays quiet (nothing polls).
+	void _on_item_minimum_size_changed();
 	bool try_start_fling(float p_velocity);
 
 	// Auto-measure (Android wrap_content / match_parent): measures the item's
