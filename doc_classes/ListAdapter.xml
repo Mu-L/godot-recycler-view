@@ -49,7 +49,17 @@ where [code]MyDiffCallback[/code] extends [b]DiffUtilItemCallback[/b] and implem
 			<return type="void" />
 			<param index="0" name="list" type="Array" />
 			<description>Diffs the current list against [code]list[/code] and dispatches incremental updates.
-Passing the same array instance is a no-op. The diff runs synchronously.</description>
+The diff runs synchronously.
+
+[b]Snapshot contract[/b] (mirrors Android's [i]AsyncListDiffer.submitList[/i]):
+[code]list[/code] is kept by reference and must not be mutated in place afterwards.
+Passing the same array instance is a no-op — so if you mutate the array you submitted
+earlier, the next [method submit_list] silently drops the change and the view stays
+stale, because the adapter's "previous list" is that same mutated array. When the data
+lives in a "master" array that keeps changing (e.g. chat history), pass a copy each time:
+[codeblock]
+adapter.submit_list(master_array.duplicate())
+[/codeblock]</description>
 		</method>
 	</methods>
 </class>

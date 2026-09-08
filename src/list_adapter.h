@@ -34,6 +34,10 @@ public:
 
 	// Diffs the current list against p_list and dispatches incremental updates.
 	// A no-op when p_list is the same Array instance as the current list.
+	// p_list is kept by reference (Android AsyncListDiffer semantics): the caller
+	// must treat it as an immutable snapshot and not mutate it in place after
+	// submitting — a mutated previous submission silently no-ops and the view
+	// goes stale. Apps with a "master" array should submit .duplicate() of it.
 	void submit_list(const Array &p_list);
 	Array get_current_list() const { return m_list; }
 	Variant get_item(int p_index) const;

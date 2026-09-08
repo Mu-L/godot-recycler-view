@@ -60,6 +60,18 @@ rv.set_adapter(adapter)
 adapter.submit_list(new_users)
 ```
 
+> **Important: `submit_list` keeps the array you pass by reference (mirroring Android's
+> `AsyncListDiffer`), so do not mutate that array in place after submitting it**
+> (`push_back`, element assignment, …). Otherwise, by the next `submit_list` the adapter's
+> "previous list" has already been changed out from under it: the diff has no true old
+> snapshot to compare against and the update is silently dropped, leaving the view stuck
+> on stale data. When your source is a single "master" array that keeps changing, submit a
+> copy each time instead:
+
+```gdscript
+adapter.submit_list(all_items.duplicate())  # pass a snapshot, not the master array itself
+```
+
 `_are_items_the_same` decides identity (same id → a move or a change, not a remove+insert);
 `_are_contents_the_same` decides whether a change op is needed at all. Renaming one row thus
 emits a single `change`, not a rebuild — `created` stays flat (the demo shows this).

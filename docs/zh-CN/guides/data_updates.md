@@ -56,6 +56,15 @@ rv.set_adapter(adapter)
 adapter.submit_list(new_users)
 ```
 
+> **重要：`submit_list` 按引用持有传入的数组（与 Android `AsyncListDiffer` 一致），
+> 提交之后不要再原地改动那个数组**（`push_back` / 赋值元素等）。否则下一次 `submit_list`
+> 时，adapter 手里的“旧列表”已经被你改掉，diff 拿不到真正的旧快照，更新会被静默丢弃，
+> 画面停留在旧数据上。当数据源是一个会持续变更的“主数组”时，每次提交传一份副本即可：
+
+```gdscript
+adapter.submit_list(all_items.duplicate())  # 传入快照,而不是主数组本身
+```
+
 `_are_items_the_same` 判断身份（同一 id → 移动或修改，而不是删除+插入）；`_are_contents_the_same`
 判断是否需要发出 change。给一行改名因此只发一个 change，而不是重建——`created` 保持不动（demo 有展示）。
 
