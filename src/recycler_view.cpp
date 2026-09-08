@@ -268,6 +268,18 @@ void RecyclerView::_gui_input(const Ref<InputEvent> &p_event) {
 	// MOUSE_FILTER_IGNORE and lets the event fall through to the RV.
 	Ref<InputEventMouseButton> mb = p_event;
 	if (mb.is_valid()) {
+		// reverse_layout flips which offset direction the newer/older items sit
+		// in (the content->screen mapping is mirrored), so the wheel must adapt
+		// like the drag/fling paths do below — but only when this RV consumes
+		// the wheel on its own axis. A spill-over to an ancestor keeps the raw
+		// wheel sign; the ancestor applies its own convention.
+		const bool layout_reverse = m_layout.is_valid() && m_layout->is_reverse_layout();
+		const bool consumes_vertical = m_layout.is_valid() && m_layout->can_scroll_vertically();
+		const bool consumes_horizontal = m_layout.is_valid() && m_layout->can_scroll_horizontally();
+		const bool flip_vertical_wheel = layout_reverse
+				&& (consumes_vertical
+						|| (consumes_horizontal && m_vertical_wheel_scrolls_horizontal && !has_ancestor_scrolling_axis(false)));
+		const bool flip_horizontal_wheel = layout_reverse && consumes_horizontal;
 		// The touch helper owns an active gesture (long-press drag / swipe):
 		// give it first crack so it can consume press/release and keep the RV
 		// from scrolling or flinging while it is in control.
@@ -315,16 +327,20 @@ void RecyclerView::_gui_input(const Ref<InputEvent> &p_event) {
 			}
 			accept_event();
 		} else if (mb->is_pressed() && mb->get_button_index() == MouseButton::MOUSE_BUTTON_WHEEL_UP) {
-			forward_vertical_scroll(-(int)(mb->get_factor() * 48.0f));
+			// A wheel step in reverse layout moves the content the same way the
+			// wheel does in a normal layout: WHEEL_UP = older content (offset
+			// deeper), WHEEL_DOWN = newer content (offset toward 0), keeping the
+			// wheel in sync with the mirrored scroll bar thumb.
+			forward_vertical_scroll(flip_vertical_wheel ? (int)(mb->get_factor() * 48.0f) : -(int)(mb->get_factor() * 48.0f));
 			accept_event();
 		} else if (mb->is_pressed() && mb->get_button_index() == MouseButton::MOUSE_BUTTON_WHEEL_DOWN) {
-			forward_vertical_scroll((int)(mb->get_factor() * 48.0f));
+			forward_vertical_scroll(flip_vertical_wheel ? -(int)(mb->get_factor() * 48.0f) : (int)(mb->get_factor() * 48.0f));
 			accept_event();
 		} else if (mb->is_pressed() && mb->get_button_index() == MouseButton::MOUSE_BUTTON_WHEEL_LEFT) {
-			forward_horizontal_scroll(-(int)(mb->get_factor() * 48.0f));
+			forward_horizontal_scroll(flip_horizontal_wheel ? (int)(mb->get_factor() * 48.0f) : -(int)(mb->get_factor() * 48.0f));
 			accept_event();
 		} else if (mb->is_pressed() && mb->get_button_index() == MouseButton::MOUSE_BUTTON_WHEEL_RIGHT) {
-			forward_horizontal_scroll((int)(mb->get_factor() * 48.0f));
+			forward_horizontal_scroll(flip_horizontal_wheel ? -(int)(mb->get_factor() * 48.0f) : (int)(mb->get_factor() * 48.0f));
 			accept_event();
 		}
 		return;

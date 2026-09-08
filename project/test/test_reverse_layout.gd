@@ -259,3 +259,72 @@ func test_normal_drag_up_moves_content_up() -> void:
 	# normal: content up = deeper items = offset increases.
 	assert_that(rv.get_scroll_offset()).is_greater(before)
 	_free(rv)
+
+
+# Wheel buttons over a reverse layout move the content the same way they do
+# over a normal one (WHEEL_UP = older content deeper in the list, WHEEL_DOWN =
+# newer content toward position 0), matching the mirrored scroll bar thumb.
+# Regression: the wheel used to keep the raw offset sign while the layout, the
+# thumb and the drag/fling paths all flipped, so in reverse layout a WHEEL_DOWN
+# moved the content down and the thumb up — the opposite of the normal layout.
+func _wheel(rv: RecyclerView, button: MouseButton) -> void:
+	var ev := InputEventMouseButton.new()
+	ev.button_index = button
+	ev.pressed = true
+	ev.position = Vector2(180, 300)
+	get_tree().root.push_input(ev)
+	await get_tree().process_frame
+
+
+func test_reverse_wheel_down_moves_toward_newest() -> void:
+	var s := await _make_rv(100)
+	var rv: RecyclerView = s.rv
+	var layout := LinearLayoutManager.new()
+	layout.set_reverse_layout(true)
+	rv.set_layout(layout)
+	rv.request_layout()
+	await get_tree().process_frame
+	rv.set_scroll_offset(2000)
+	await get_tree().process_frame
+	var before := rv.get_scroll_offset()
+	var bar: ScrollBar = rv.get_v_scroll_bar()
+	var thumb_before := int(bar.get_value())
+	await _wheel(rv, MOUSE_BUTTON_WHEEL_DOWN)
+	# reverse: newer items sit toward position 0, which is offset 0.
+	assert_that(rv.get_scroll_offset()).is_less(before)
+	# The mirrored thumb moved down (value grew toward max_offset) — the wheel
+	# and the bar now agree again instead of opposing each other.
+	assert_that(int(bar.get_value())).is_greater(thumb_before)
+	_free(rv)
+
+
+func test_reverse_wheel_up_moves_toward_older() -> void:
+	var s := await _make_rv(100)
+	var rv: RecyclerView = s.rv
+	var layout := LinearLayoutManager.new()
+	layout.set_reverse_layout(true)
+	rv.set_layout(layout)
+	rv.request_layout()
+	await get_tree().process_frame
+	rv.set_scroll_offset(2000)
+	await get_tree().process_frame
+	var before := rv.get_scroll_offset()
+	await _wheel(rv, MOUSE_BUTTON_WHEEL_UP)
+	# reverse: older items sit at the content end (deep offsets).
+	assert_that(rv.get_scroll_offset()).is_greater(before)
+	_free(rv)
+
+
+func test_normal_wheel_down_moves_toward_deeper() -> void:
+	var s := await _make_rv(100)
+	var rv: RecyclerView = s.rv
+	rv.set_layout(LinearLayoutManager.new())
+	rv.request_layout()
+	await get_tree().process_frame
+	rv.set_scroll_offset(2000)
+	await get_tree().process_frame
+	var before := rv.get_scroll_offset()
+	await _wheel(rv, MOUSE_BUTTON_WHEEL_DOWN)
+	# normal layout keeps the raw mapping: WHEEL_DOWN deepens the offset.
+	assert_that(rv.get_scroll_offset()).is_greater(before)
+	_free(rv)
