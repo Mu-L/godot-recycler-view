@@ -51,6 +51,27 @@ rv.set_layout(layout)
 
 需要单元格几何信息时可用查询方法（`get_item_row`、`get_item_column`、`get_row_offset` 等）。
 
+**运行时变更列数**：`set_span_count()` 可以在任意时刻调用（窗口拉伸、横竖屏切换等）——
+它会重建行模型，下一次布局把已挂载的条目重新排到新的行/列上（holder 复用，不是整体重建）。
+列数不会被自动推断，需要使用者按视口宽度决定，并主动请求一次布局：
+
+```gdscript
+const TARGET_ITEM_WIDTH := 160   # 每个条目想要的宽度；实际宽度 = 视口 / 列数
+
+func _ready() -> void:
+    rv.resized.connect(_update_span_count)   # 宽度一变就重算
+    _update_span_count()
+
+func _update_span_count() -> void:
+    var cols := maxi(1, int(rv.size.x) / TARGET_ITEM_WIDTH)
+    if cols != layout.get_span_count():
+        layout.set_span_count(cols)
+        rv.request_layout()                  # 本帧重排（resized 里的那次布局用的还是旧列数）
+```
+
+完整示例见 `responsive_grid_demo.tscn`。注意格子宽度是视口均分（`视口宽度 / 列数`，
+与 Android 的 GridLayoutManager 一致），条目会被拉伸填满格子。
+
 ## StaggeredGridLayoutManager —— 瀑布流
 
 每个新条目流入当前最短的列，各列独立增长，条目错开而非逐行对齐：

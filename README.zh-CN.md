@@ -106,6 +106,7 @@ add_child(rv)
 | `multi_type_demo.tscn` | 单列表多视图类型 |
 | `mixed_demo.tscn` | 混合视图类型 + 可变长度 |
 | `grid_demo.tscn` | `GridLayoutManager` + `SpanSizeLookup` + 分隔线 |
+| `responsive_grid_demo.tscn` | 实时变更 `span_count`:拉伸窗口,列数跟着变 |
 | `staggered_demo.tscn` | `StaggeredGridLayoutManager` 瀑布流 |
 | `ops_demo.tscn` | 插入/移除/移动/变化更新操作 |
 | `partial_update_demo.tscn` | payload 局部更新（只重绑变化的单元格） |

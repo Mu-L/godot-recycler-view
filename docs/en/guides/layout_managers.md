@@ -53,6 +53,29 @@ rv.set_layout(layout)
 Helper queries (`get_item_row`, `get_item_column`, `get_row_offset`, …) are available if you
 need cell geometry from a script.
 
+**Changing the column count at runtime**: `set_span_count()` can be called at any time (window
+resize, orientation change, …) — it rebuilds the row model, and the next layout re-flows the
+already-mounted items into the new rows/columns (holders are reused, not rebuilt). The count
+is not inferred for you: decide it from the viewport width and request one layout yourself:
+
+```gdscript
+const TARGET_ITEM_WIDTH := 160   # the width an item wants; actual = viewport / columns
+
+func _ready() -> void:
+    rv.resized.connect(_update_span_count)   # recompute whenever the width changes
+    _update_span_count()
+
+func _update_span_count() -> void:
+    var cols := maxi(1, int(rv.size.x) / TARGET_ITEM_WIDTH)
+    if cols != layout.get_span_count():
+        layout.set_span_count(cols)
+        rv.request_layout()                  # re-flow now (the layout in resized used the old count)
+```
+
+See `responsive_grid_demo.tscn` for the full example. Note that cells split the viewport
+evenly (`viewport width / columns`, as in Android's GridLayoutManager), so items stretch to
+fill their cell.
+
 ## StaggeredGridLayoutManager — masonry
 
 Each new item flows into the currently shortest column, so columns grow independently and

@@ -106,6 +106,7 @@ Open the `project/` folder in Godot and run any scene:
 | `multi_type_demo.tscn` | Multiple view types in one list |
 | `mixed_demo.tscn` | Mixed view types with variable extents |
 | `grid_demo.tscn` | `GridLayoutManager` with a `SpanSizeLookup` and dividers |
+| `responsive_grid_demo.tscn` | Live `span_count`: resize the window and the column count follows |
 | `staggered_demo.tscn` | `StaggeredGridLayoutManager` masonry |
 | `ops_demo.tscn` | Insert / remove / move / change update operations |
 | `partial_update_demo.tscn` | Payload partial updates (only the changed cell rebinds) |

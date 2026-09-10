@@ -173,3 +173,93 @@ func test_span_count_change_rebuilds_rows() -> void:
 	assert_that(layout.get_item_row(5)).is_equal(1)
 	rv.free_items()
 	rv.free()
+
+
+func _holder_rect(rv: RecyclerView, position: int) -> Rect2:
+	for i in rv.get_child_holder_count():
+		var h: ViewHolder = rv.get_child_holder_at(i)
+		if h.get_position() == position:
+			var c: Control = h.get_control()
+			return Rect2(c.position, c.size)
+	return Rect2()
+
+
+func _prepare_responsive_rv(width: float) -> Dictionary:
+	get_window().size = Vector2i(1920, 1080)
+	get_window().content_scale_size = Vector2i(1920, 1080)
+	await get_tree().process_frame
+	var rv := RecyclerView.new()
+	rv.set_size(Vector2(width, 300))
+	var adapter := CellAdapter.new()
+	adapter.count = 12
+	rv.set_item_extent(60)
+	rv.set_adapter(adapter)
+	var layout := GridLayoutManager.new()
+	layout.set_span_count(2)
+	rv.set_layout(layout)
+	get_tree().root.add_child(rv)
+	rv.request_layout()
+	await get_tree().process_frame
+	return { "rv": rv, "adapter": adapter, "layout": layout }
+
+
+func test_span_count_change_reflows_mounted_children() -> void:
+	# A live grid re-flows when span_count changes: the already-mounted holders
+	# keep their identity but every row/column assignment is recomputed.
+	var s := await _prepare_responsive_rv(360.0)
+	var rv: RecyclerView = s.rv
+	var layout: GridLayoutManager = s.layout
+
+	# 2 columns of 180: row 0 holds positions 0 and 1.
+	assert_that(_holder_rect(rv, 0)).is_equal(Rect2(0, 0, 180, 60))
+	assert_that(_holder_rect(rv, 1)).is_equal(Rect2(180, 0, 180, 60))
+	assert_that(_holder_rect(rv, 2)).is_equal(Rect2(0, 60, 180, 60))
+
+	# The viewport grows and the app re-computes the column count from it.
+	rv.set_size(Vector2(540, 300))
+	layout.set_span_count(3)
+	rv.request_layout()
+	await get_tree().process_frame
+
+	# Same 12 items, now 4 rows of 3 — mounted holders re-flowed in place.
+	assert_that(layout.get_row_count()).is_equal(4)
+	assert_that(_holder_rect(rv, 0)).is_equal(Rect2(0, 0, 180, 60))
+	assert_that(_holder_rect(rv, 1)).is_equal(Rect2(180, 0, 180, 60))
+	assert_that(_holder_rect(rv, 2)).is_equal(Rect2(360, 0, 180, 60))
+	assert_that(_holder_rect(rv, 3)).is_equal(Rect2(0, 60, 180, 60))
+	assert_that(_holder_rect(rv, 11)).is_equal(Rect2(360, 180, 180, 60))
+	rv.free_items()
+	rv.free()
+
+
+func _desired_item_width() -> int:
+	# The width an item wants; the grid stretches it to viewport/span_count.
+	return 150
+
+
+func test_resize_signal_drives_span_count_responsively() -> void:
+	# The responsive wiring an app writes once: recompute the column count from
+	# the viewport width on every resize, and re-layout only when it changed.
+	var s := await _prepare_responsive_rv(360.0)
+	var rv: RecyclerView = s.rv
+	var layout: GridLayoutManager = s.layout
+	var changes: Array[int] = []
+	rv.resized.connect(func() -> void:
+		var cols: int = maxi(1, int(rv.size.x / float(_desired_item_width())))
+		if cols != layout.get_span_count():
+			layout.set_span_count(cols)
+			changes.append(cols)
+			rv.request_layout())
+
+	# 360 -> 2 columns; 540 -> 3; 780 -> 5; back to 360 -> 2.
+	for width in [540.0, 780.0, 360.0]:
+		rv.set_size(Vector2(width, 300))
+		await get_tree().process_frame
+
+	assert_that(changes).contains_exactly([3, 5, 2])
+	assert_that(layout.get_span_count()).is_equal(2)
+	assert_that(layout.get_row_count()).is_equal(6)
+	# 360 / 2 = 180 per cell, and the re-flow is live again after the shrink.
+	assert_that(_holder_rect(rv, 1)).is_equal(Rect2(180, 0, 180, 60))
+	rv.free_items()
+	rv.free()
