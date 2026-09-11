@@ -1,0 +1,74 @@
+[gd_scene format=3 load_steps=2]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_card"]
+bg_color = Color(0.169, 0.176, 0.204, 1)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+
+[node name="NaiveRow" type="Control"]
+custom_minimum_size = Vector2(0, 88)
+layout_mode = 3
+anchors_preset = 0
+
+[node name="Card" type="PanelContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_card")
+
+[node name="Margin" type="MarginContainer" parent="Card"]
+layout_mode = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 8
+
+[node name="Row" type="HBoxContainer" parent="Card/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="Avatar" type="ColorRect" parent="Card/Margin/Row"]
+custom_minimum_size = Vector2(64, 64)
+layout_mode = 2
+size_flags_vertical = 4
+
+[node name="Body" type="VBoxContainer" parent="Card/Margin/Row"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 4
+theme_override_constants/separation = 3
+
+[node name="Title" type="Label" parent="Card/Margin/Row/Body"]
+layout_mode = 2
+text = "Item"
+
+[node name="Subtitle" type="Label" parent="Card/Margin/Row/Body"]
+layout_mode = 2
+clip_text = true
+theme_override_font_sizes/font_size = 11
+text = "secondary line of text for this row"
+
+[node name="Progress" type="ProgressBar" parent="Card/Margin/Row/Body"]
+custom_minimum_size = Vector2(0, 6)
+layout_mode = 2
+value = 45.0
+show_percentage = false
+
+[node name="Actions" type="VBoxContainer" parent="Card/Margin/Row"]
+layout_mode = 2
+size_flags_vertical = 4
+
+[node name="Time" type="Label" parent="Card/Margin/Row/Actions"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 10
+text = "12:00"
+horizontal_alignment = 2
+
+[node name="Action" type="Button" parent="Card/Margin/Row/Actions"]
+layout_mode = 2
+text = "Open"

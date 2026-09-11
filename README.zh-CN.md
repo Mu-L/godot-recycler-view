@@ -102,6 +102,7 @@ add_child(rv)
 | 场景 | 演示内容 |
 |---|---|
 | `recycler_demo.tscn` | 一万条数据的垂直列表；实时随机编辑；created/visible 计数 |
+| `naive_list_demo.tscn` | 朴素 `VBoxContainer` vs RecyclerView：选条目数量，对比构建耗时、节点数与 FPS |
 | `list_adapter_demo.tscn` | `ListAdapter` + `submit_list()` 自动 diff |
 | `multi_type_demo.tscn` | 单列表多视图类型 |
 | `mixed_demo.tscn` | 混合视图类型 + 可变长度 |

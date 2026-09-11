@@ -1,0 +1,57 @@
+[gd_scene format=3 load_steps=2]
+
+[ext_resource type="Script" path="res://naive_list_demo.gd" id="1_demo"]
+
+[node name="Demo" type="VBoxContainer"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_demo")
+
+[node name="Toolbar" type="HBoxContainer" parent="."]
+layout_mode = 2
+
+[node name="CountLabel" type="Label" parent="Toolbar"]
+layout_mode = 2
+text = "条目数量："
+
+[node name="CountOption" type="OptionButton" parent="Toolbar"]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="ModeLabel" type="Label" parent="Toolbar"]
+layout_mode = 2
+text = "    渲染方式："
+
+[node name="ModeOption" type="OptionButton" parent="Toolbar"]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="StatsLabel" type="Label" parent="."]
+unique_name_in_owner = true
+layout_mode = 2
+autowrap_mode = 3
+text = "…"
+
+[node name="HintLabel" type="Label" parent="."]
+layout_mode = 2
+autowrap_mode = 3
+text = "先切换「条目数量」看构建耗时：VBoxContainer 要一次性建出全部条目，越多卡得越久；再切到「RecyclerView」对比同样的数量。然后用滚轮滚动，看 FPS 随条目数量的变化。"
+
+[node name="Scroll" type="ScrollContainer" parent="."]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="ListBox" type="VBoxContainer" parent="Scroll"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="RecyclerView" type="RecyclerView" parent="."]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+size_flags_vertical = 3

@@ -102,6 +102,7 @@ Open the `project/` folder in Godot and run any scene:
 | Scene | Shows |
 |---|---|
 | `recycler_demo.tscn` | Vertical list of 10k items; live random edits; created/visible counters |
+| `naive_list_demo.tscn` | Plain `VBoxContainer` vs RecyclerView: pick an item count and compare build time, node count and FPS |
 | `list_adapter_demo.tscn` | `ListAdapter` + `submit_list()` auto-diffing |
 | `multi_type_demo.tscn` | Multiple view types in one list |
 | `mixed_demo.tscn` | Mixed view types with variable extents |
