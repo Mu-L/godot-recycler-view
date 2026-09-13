@@ -1,3 +1,5 @@
+.cache
+
 # Godot auto generated files
 *.gen.*
 .godot/
