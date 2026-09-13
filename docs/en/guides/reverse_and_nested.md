@@ -90,6 +90,13 @@ rect, and call `request_layout()` on inner RecyclerViews after wiring them up. S
 nesting relays the scroll so the inner list consumes the gesture first, then hands the
 remainder to the outer one.
 
+An inner RecyclerView can also be filled while its item is off-tree — recycled out of view, or
+reached by a data update that does not stop at the viewport. Its rows are mounted there but not
+filled yet: an item's scene has to run its ready pass before `_bind_item` may touch it
+(`@onready` references are null before that), and a control that is off-tree cannot run one. The
+bind is waiting for that ready pass and lands by itself once the item is back on screen. Items
+built in code have no `@onready` state to wait for and are bound immediately.
+
 ## Next steps
 
 - [Quick start](quick_start.md) — the adapter basics this builds on.

@@ -12,7 +12,7 @@ that project (or into your context) — the rules below are the ones that get mi
 
 ## The mental model
 
-Four things trip up code generation more than anything else:
+Five things trip up code generation more than anything else:
 
 1. **Callbacks are GDScript virtual methods, not signals.** Subclass and override methods with a
    leading underscore (`_create_item`, `_bind_item`, `_on_scrolled`, …). The RecyclerView itself
@@ -31,6 +31,15 @@ Four things trip up code generation more than anything else:
 4. **There are three ways to feed the list, and only one of them takes manual `notify_*` calls.**
    Picking the wrong one, or mixing them, is the single most common source of "the view won't
    update" reports. See the next section.
+
+5. **A row is bound only after its item scene has run its ready pass.** The library mounts the
+   control, and when the scene has `@onready` references to fill it waits for `ready` before
+   calling `_bind_item` — so your `_bind_item` never writes into a half-built item and you should
+   never `await control.ready` yourself. A control that *cannot* run its ready pass stays unbound
+   until it can: a nested RecyclerView whose item was recycled off-tree is laid out with its
+   scenes unreadied, so those rows fill when the item comes back on screen rather than at the
+   moment you submit. Items built in code have no `@onready` state to wait for and bind straight
+   away.
 
 ---
 

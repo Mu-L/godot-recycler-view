@@ -26,6 +26,12 @@ Full version of these notes: <https://github.com/iYouthy/godot-recycler-view/blo
    `SortedList`: it keeps items ordered and emits the ops; you forward its callback's `_on_*` to
    an adapter. Calling `notify_*` on the latter two is a bug, not an alternative.
 
+5. **A row is bound only after its item scene has run its ready pass** — the library waits for
+   `ready` before `_bind_item`, so never `await control.ready` yourself, and never read an item's
+   labels right after `_create_item`. A nested RecyclerView whose item was recycled off-tree lays
+   out with its scenes unreadied: those rows stay unbound and fill when the item is back on
+   screen. Code-built items have no `@onready` state to wait for and bind immediately.
+
 ## Minimal working list
 
 ```gdscript

@@ -85,6 +85,11 @@ class NestedAdapter extends Adapter:
 给条目的根 `Control` 开 `clip_contents`，让嵌套列表留在内缩矩形里；内层 RecyclerView 接好线后调用
 `request_layout()`。同方向嵌套会接力滚动：内层先消费手势，剩余部分交给外层。
 
+内层 RecyclerView 也可能在自己的条目离树时被填充——条目被回收出屏幕，或者一次数据更新并不止于
+视口内。此时它的行只挂载、尚未绑定：条目的场景要先跑完 ready 流程 `_bind_item` 才能动它（在那之前
+`@onready` 引用还是 null），而离树的 control 跑不了 ready。这次绑定在等 ready，条目回到屏幕时会自行
+落地。用代码搭出来的条目没有 `@onready` 状态可等，会立即绑定。
+
 ## 下一步
 
 - [快速入门](quick_start.md) —— 本教程依赖的 adapter 基础。
