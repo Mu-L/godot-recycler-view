@@ -21,7 +21,10 @@ Five things trip up code generation more than anything else:
 
 2. **Items are `Control`s positioned by absolute rects, not by a container layout.** There is no
    measure/layout pass. Every item has a *main-axis extent* you supply; the cross axis comes from
-   the viewport. Nothing sizes itself unless you turn on `auto_measure_items`.
+   the viewport. Nothing sizes itself unless you turn on `auto_measure_items`. The list owns that
+   rect outright: it sets position and size itself and pins the item root's anchors to top-left, so
+   anchors you set on the root are overwritten — size an item through its extent (or
+   `auto_measure_items`), never through the root's anchors.
 
 3. **Class names are Android's, methods are Godot snake_case.** `RecyclerView`, `Adapter`,
    `ViewHolder`, `LinearLayoutManager` — but `set_adapter()`, `notify_item_inserted()`,

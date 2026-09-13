@@ -19,6 +19,8 @@ Full version of these notes: <https://github.com/iYouthy/godot-recycler-view/blo
    there is no `item_clicked` to connect. Row interactions belong on the row control itself.
 2. **Items are `Control`s positioned by absolute rects; there is no measure/layout pass.** You
    supply each item's main-axis extent. Nothing sizes itself unless `auto_measure_items` is on.
+   The list sets that rect itself and pins the item root's anchors to top-left, so anchors on the
+   root are overwritten — size an item through its extent, never through the root's anchors.
 3. **Android class names, Godot snake_case methods.** `RecyclerView` + `set_adapter()`,
    `notify_item_inserted()`, `submit_list()`. Android listener interfaces became virtual methods.
 4. **Three ways to feed the list, and only one takes manual `notify_*`.** A plain `Adapter`:
