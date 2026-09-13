@@ -1608,6 +1608,18 @@ void RecyclerView::add_item_view(const Ref<ViewHolder> &p_holder) {
 		control->set_mouse_filter(MOUSE_FILTER_PASS);
 		// A holder reused after a remove fade-out has a faded alpha; reset it.
 		control->set_modulate(Color(1, 1, 1, 1));
+		// An item is placed by absolute rect (see set_item_view_position), so its
+		// root must not stay anchored to the parent's size. An item scene root is
+		// usually full-rect anchored (the editor's default preset, growing both
+		// ways), and Godot derives a Control's offsets from its parent's size —
+		// which it reports as EMPTY while the subtree is off-tree. A layout that
+		// ran there (a nested RecyclerView inside a recycled item, a detached RV
+		// measuring itself) would leave those offsets absolute, and the item would
+		// inflate by exactly +parent size the moment the subtree enters a tree:
+		// oversized items overlapping their neighbours until an in-tree layout
+		// happens to re-place them. Top-left anchors make every assigned rect
+		// absolute, whenever and wherever it is assigned; the current rect is kept.
+		control->set_anchors_preset(Control::PRESET_TOP_LEFT, true);
 		add_child(control);
 		// Keep the scroll bars as the RV's last children: Godot's GUI hit-test
 		// and draw order walk the child list back to front, so a bar added
