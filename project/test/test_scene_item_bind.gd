@@ -65,6 +65,27 @@ func _label_text(rv: RecyclerView, position: int) -> String:
 	return ""
 
 
+func _holder_at(rv: RecyclerView, position: int) -> ViewHolder:
+	for i in rv.get_child_holder_count():
+		if rv.get_child_holder_at(i).get_position() == position:
+			return rv.get_child_holder_at(i)
+	return null
+
+
+func _make_off_tree_rv(adapter: Adapter, size := Vector2(300, 120), extent := 60) -> RecyclerView:
+	# A RecyclerView that is not inside the tree: it still fills (build-time
+	# layout, measuring), but its item scenes never run a ready pass.
+	var rv := RecyclerView.new()
+	rv.set_size(size)
+	rv.set_item_extent(extent)
+	rv.set_prefetch_enabled(false)
+	rv.set_adapter(adapter)
+	rv.set_layout(LinearLayoutManager.new())
+	rv.request_layout()
+	await get_tree().process_frame
+	return rv
+
+
 func test_first_layout_binds_scene_items_after_ready() -> void:
 	var s := await _make_setup()
 	var rv: RecyclerView = s.rv
@@ -154,6 +175,129 @@ class WrappedTextAdapter extends Adapter:
 		(root.get_child(0) as RichTextLabel).text = (
 				"a long line of words that wraps onto several lines when shaped "
 				+ "at a narrow width but stays within the extent at three hundred pixels")
+
+
+# Regression: a scene item first mounted while its RecyclerView is off-tree must
+# not be bound there. The control cannot run its ready pass until it enters a
+# tree, so _bind_item would write through @onready references that are still
+# null (the reported crash: "Invalid assignment ... on a base object of type
+# 'Nil'" from the item's own refresh()). The bind waits for the ready signal and
+# lands when the RecyclerView enters the tree.
+func test_off_tree_mount_defers_scene_bind_until_ready() -> void:
+	var adapter := SceneAdapter.new()
+	for i in 4:
+		adapter.items.append("item %d" % i)
+	var rv := await _make_off_tree_rv(adapter, Vector2(300, 120), 60)
+	assert_that(rv.get_child_holder_count()).is_greater(0)
+	for i in rv.get_child_holder_count():
+		# Mounted, but deliberately not bound: nothing to bind into yet.
+		assert_that(rv.get_child_holder_at(i).is_bound()).is_false()
+	assert_that(adapter.created).is_greater(0)
+
+	get_tree().root.add_child(rv)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	# The ready pass ran on the way in, so every visible row is bound and filled.
+	assert_that(adapter.bound_inside_tree).is_true()
+	for i in rv.get_child_holder_count():
+		var pos: int = rv.get_child_holder_at(i).get_position()
+		assert_that(_label_text(rv, pos)).is_equal("item %d" % pos)
+	rv.free_items()
+	rv.free()
+
+
+# The reported case, one level deeper: the items of a RecyclerView that lives
+# inside another RecyclerView's item are filled while that outer item is off-tree
+# (recycled into the cache/pool, where its signals still reach it). The inner
+# items then have no ready pass either — they must defer like any other.
+func test_nested_rv_filled_off_tree_defers_inner_bind() -> void:
+	var outer := OuterAdapter.new()
+	for i in 3:
+		outer.items.append(i)
+	var outer_rv := await _make_off_tree_rv(outer, Vector2(300, 150), 150)
+	assert_that(outer_rv.get_child_holder_count()).is_greater(0)
+
+	var item: NestedItem = _holder_at(outer_rv, 0).get_control()
+	var inner: RecyclerView = item.inner_rv
+	# Off-tree containers do not sort their children, so the inner RV has no size
+	# of its own yet: give it one, as the outer item's layout would.
+	inner.set_size(Vector2(280, 100))
+	inner.set_item_extent(50)
+	inner.set_prefetch_enabled(false)
+	inner.set_adapter(item.inner_adapter)
+	inner.set_layout(LinearLayoutManager.new())
+	item.inner_adapter.items = ["a", "b"]
+	inner.request_layout()
+	await get_tree().process_frame
+	# Inner rows are mounted off-tree but not bound: their scene has no ready
+	# pass yet, so writing through @onready would crash the item.
+	assert_that(inner.get_child_holder_count()).is_greater(0)
+	for i in inner.get_child_holder_count():
+		assert_that(inner.get_child_holder_at(i).is_bound()).is_false()
+
+	get_tree().root.add_child(outer_rv)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	assert_that(item.label.text).is_equal("outer 0")
+	# Inner and outer ready passes both ran; the deferred binds filled the rows.
+	assert_that(_label_text(inner, 0)).is_equal("leaf a")
+	assert_that(_label_text(inner, 1)).is_equal("leaf b")
+	outer_rv.free_items()
+	outer_rv.free()
+
+
+# Item whose control carries its own RecyclerView, the shape behind the report.
+class NestedItem extends VBoxContainer:
+	@onready var label: Label = $Label
+	var inner_rv: RecyclerView
+	var inner_adapter := InnerAdapter.new()
+
+	func _init() -> void:
+		custom_minimum_size = Vector2(0, 150)
+		var l := Label.new()
+		l.name = "Label"
+		add_child(l)
+		inner_rv = RecyclerView.new()
+		inner_rv.name = "InnerRV"
+		inner_rv.custom_minimum_size = Vector2(0, 100)
+		add_child(inner_rv)
+
+
+class InnerAdapter extends Adapter:
+	var items: Array = []
+
+	func _get_item_count() -> int:
+		return items.size()
+
+	func _get_item_extent(_position: int) -> int:
+		return 50
+
+	func _create_item(_parent: Control, _view_type: int) -> ViewHolder:
+		var vh := ViewHolder.new()
+		vh.set_control(ITEM_SCENE.instantiate())
+		return vh
+
+	func _bind_item(holder: ViewHolder, position: int) -> void:
+		(holder.get_control() as TestListItem).refresh("leaf %s" % items[position])
+
+
+class OuterAdapter extends Adapter:
+	var items: Array = []
+
+	func _get_item_count() -> int:
+		return items.size()
+
+	func _get_item_extent(_position: int) -> int:
+		return 150
+
+	func _create_item(_parent: Control, _view_type: int) -> ViewHolder:
+		var vh := ViewHolder.new()
+		vh.set_control(NestedItem.new())
+		return vh
+
+	func _bind_item(holder: ViewHolder, position: int) -> void:
+		var item: NestedItem = holder.get_control()
+		item.label.text = "outer %d" % position
 
 
 func test_fresh_mount_binds_at_slot_width_and_holds_slot() -> void:

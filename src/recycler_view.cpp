@@ -1616,15 +1616,18 @@ void RecyclerView::add_item_view(const Ref<ViewHolder> &p_holder) {
 		// after the freshly added item (cheap: a handful of children).
 		move_child(m_v_scroll, get_child_count() - 1);
 		move_child(m_h_scroll, get_child_count() - 1);
-		// Port of Adapter.onBindViewHolder: a holder that was mounted before
-		// (its scene ran the ready pass, so @onready references are populated
-		// and survive detach) can bind right away; FLAG_BOUND is cleared by
-		// reset_internal for pool/cache reuses. A first-time mount is different:
-		// Godot runs the item scene's ready pass at the end of the frame, NOT
-		// inside add_child, so the control's @onready references are still null
-		// right after the mount — binding now would run _bind_item against an
-		// unready scene (a scene item refreshing its labels hits null refs).
-		// Defer the first bind to the control's ready signal.
+		// Port of Adapter.onBindViewHolder: bind now when the control can take
+		// it, otherwise defer to its ready pass (see
+		// item_control_is_bindable). FLAG_BOUND is cleared by reset_internal for
+		// pool/cache reuses. Godot runs an item scene's ready pass at the end of
+		// the frame, NOT inside add_child, so a freshly created control's
+		// @onready references are still null right here — binding now would run
+		// _bind_item against an unready scene (a scene item refreshing its
+		// labels hits null refs). The same holds for a control mounted while the
+		// RecyclerView is off-tree (a nested RecyclerView inside a recycled
+		// item, an RV that has not entered the tree yet): its ready pass cannot
+		// run until the subtree enters a tree, so the bind waits for the ready
+		// signal, which fires then.
 		// A fresh mount binds content that shapes at the control's CURRENT
 		// width — the scene's saved one, not the slot's cross size the mount
 		// layout assigns a moment later. Width-sensitive content (fit_content
@@ -1655,11 +1658,7 @@ void RecyclerView::add_item_view(const Ref<ViewHolder> &p_holder) {
 			}
 		}
 		if (m_adapter.is_valid() && !p_holder->is_bound()) {
-			// An off-tree RV (build-time layout, unit tests) never runs ready
-			// signals, so a first mount there must bind synchronously like
-			// before — deferring would leave the holder forever unbound.
-			// In-tree first mounts defer to the ready signal instead.
-			if (p_holder->has_mounted_once() || !control->is_inside_tree() || control->is_node_ready()) {
+			if (item_control_is_bindable(control)) {
 				m_adapter->bind_view_holder(p_holder, p_holder->get_position());
 			} else {
 				Callable bind = callable_mp(this, &RecyclerView::_on_item_ready).bind(p_holder);
@@ -1682,6 +1681,10 @@ void RecyclerView::_on_item_ready(const Ref<ViewHolder> &p_holder) {
 	if (p_holder.is_null() || p_holder->is_bound() || m_adapter.is_null()) {
 		return;
 	}
+	// The control's ready pass has just run (that is what fired the signal), so
+	// its @onready references are populated and the bind is safe — whether the
+	// holder is still attached, was recycled meanwhile (the bind uses the
+	// holder's current position), or was mounted while this RV was off-tree.
 	m_adapter->bind_view_holder(p_holder, p_holder->get_position());
 	if (!m_layout.is_valid()) {
 		return;
@@ -2351,16 +2354,14 @@ void RecyclerView::prefetch_and_measure(int p_position) {
 	if (control != nullptr) {
 		add_child(control);
 		// The measurement reads the item content, so the holder must be bound
-		// first. A holder that was mounted before can bind right away (its
-		// @onready refs survive detach); a fresh holder cannot — its scene has
-		// not run the ready pass yet (that happens at the end of the frame), so
-		// binding would read null refs and the measurement would read empty
-		// content. Skip the measurement; the first real mount binds and
-		// measures this row instead.
+		// first — and binding needs a control that can take it (see
+		// item_control_is_bindable). A fresh holder is left to its first real
+		// mount, which presets the slot's cross size before binding, so the
+		// content shapes at its real width. An unready scene item can never be
+		// bound here (its ready pass waits for a tree), so skip it as well: the
+		// real mount measures this row once the control is readied.
 		if (m_adapter.is_valid() && !holder->is_bound()) {
-			// Off-tree RVs never run ready signals: bind synchronously. Only an
-			// in-tree fresh mount must wait for its ready pass.
-			if (!holder->has_mounted_once() && control->is_inside_tree()) {
+			if (!holder->has_mounted_once() || !item_control_is_bindable(control)) {
 				remove_child(control);
 				m_recycler->recycle_view(holder, p_position);
 				return;

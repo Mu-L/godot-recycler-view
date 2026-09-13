@@ -39,14 +39,18 @@ Ref<ViewHolder> Recycler::get_view_for_position(int p_position) {
 	const int type = m_adapter->get_item_view_type(p_position);
 
 	// 0. Changed scrap: a holder dropped by an update in this layout cycle.
-	// These holders were mounted before (their scene _ready already ran), so a
-	// bind here is safe. Its FLAG_BOUND survives (no reset), so the mount in
-	// add_item_view skips the re-bind — position matched, content unchanged.
+	// Its FLAG_BOUND survives (no reset), so the mount in add_item_view skips
+	// the re-bind — position matched, content unchanged. When it is not bound
+	// yet (a first bind still waiting for the control's ready pass — see
+	// item_control_is_bindable), leave it to add_item_view, which applies that
+	// same rule and defers again if the control is still unready.
 	for (int i = 0; i < m_changed_scrap.size(); i++) {
 		Ref<ViewHolder> scrap = m_changed_scrap[i];
 		if (scrap->get_position() == p_position && scrap->get_item_view_type() == type) {
 			m_changed_scrap.remove_at(i);
-			m_adapter->bind_view_holder(scrap, p_position);
+			if (scrap->is_bound() || item_control_is_bindable(scrap->get_control())) {
+				m_adapter->bind_view_holder(scrap, p_position);
+			}
 			return scrap;
 		}
 	}

@@ -61,11 +61,11 @@ public:
 	bool is_tmp_detached() const { return (m_flags & FLAG_TMP_DETACHED) != 0; }
 	bool is_adapter_position_unknown() const { return (m_flags & FLAG_ADAPTER_POSITION_UNKNOWN) != 0; }
 
-	// True once the control has been mounted at least once. The control's scene
-	// ran its ready pass (@onready references populated) on that first mount;
-	// an unmounted control's @onready refs are still null, so binding it
-	// directly would run _bind_item against an unready scene. Survives
-	// reset_internal (a recycled holder keeps its ready state).
+	// True once the control has been mounted into a RecyclerView at least once.
+	// Not a readiness proxy: a mount that happens while the RecyclerView itself
+	// is off-tree leaves the control unreadied (its ready pass never runs), so
+	// use item_control_is_bindable() to decide whether a bind may happen.
+	// Survives reset_internal (a recycled holder keeps this state).
 	bool has_mounted_once() const { return m_mounted_once; }
 	void mark_mounted_once() { m_mounted_once = true; }
 
@@ -95,5 +95,19 @@ private:
 	int m_is_recyclable_count = 0;
 	bool m_mounted_once = false;
 };
+
+// Whether an item control may be bound right now. Binding a holder runs the
+// adapter's _bind_item, which refreshes the item through the item's own
+// references — and an item scene's @onready references stay null until the
+// control's ready pass has run. So:
+//   - a readied control may always bind (the references exist and survive
+//     leaving the tree),
+//   - a control whose subtree carries no script may bind before its ready pass:
+//     @onready state only exists in scripts, so there is nothing to lose. This
+//     is what keeps a RecyclerView that is itself off-tree (build-time layout,
+//     unit tests) working with code-built items, where the ready pass never
+//     runs at all,
+//   - anything else must wait for the ready signal.
+bool item_control_is_bindable(const Control *p_control);
 
 } // namespace godot

@@ -129,4 +129,31 @@ void ViewHolder::reset_internal() {
 	clear_payload();
 }
 
+namespace {
+// @onready references only exist in scripts, so a subtree with no script at all
+// has no ready-pass state to initialise.
+bool subtree_has_script(const Node *p_node) {
+	if (p_node == nullptr) {
+		return false;
+	}
+	if (p_node->get_script().get_type() != Variant::NIL) {
+		return true;
+	}
+	const int count = p_node->get_child_count();
+	for (int i = 0; i < count; i++) {
+		if (subtree_has_script(p_node->get_child(i))) {
+			return true;
+		}
+	}
+	return false;
+}
+} // namespace
+
+bool item_control_is_bindable(const Control *p_control) {
+	if (p_control == nullptr) {
+		return true;
+	}
+	return p_control->is_node_ready() || !subtree_has_script(p_control);
+}
+
 } // namespace godot
