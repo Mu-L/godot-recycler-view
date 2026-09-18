@@ -6,52 +6,53 @@ reloadable = true
 
 [libraries]
 ; Relative paths ensure that our GDExtension can be placed anywhere in the project directory.
+;
+; This list is the contract for the release package: every entry must be a file
+; the build actually produces, and every produced file must be listed here.
+; script/scan.sh enforces both directions and runs in the release workflow.
+;
+; Names follow godot-cpp's suffix rule (tools/godotcpp.py):
+;   <platform>.<target>[.dev][.precision].<arch>[.simulator][.nothreads]
+; so a double-precision build would be ".double" BEFORE the arch, e.g.
+;   libgodot-recycler-view.linux.template_debug.double.x86_64.so
+; Precision is omitted for single, and ".nothreads" only appears when a build
+; passes threads=no (the default is threads on). macOS builds universal by
+; default and scons drops the ".universal" token.
 macos.single.debug = "./macos/libgodot-recycler-view.macos.template_debug.dylib"
-macos.double.debug = "./macos/libgodot-recycler-view.macos.template_debug.double.dylib"
 macos.single.release = "./macos/libgodot-recycler-view.macos.template_release.dylib"
-macos.double.release = "./macos/libgodot-recycler-view.macos.template_release.double.dylib"
 
 ios.arm64.single.debug = "./ios/libgodot-recycler-view.ios.template_debug.arm64.dylib"
-ios.arm64.double.debug = "./ios/libgodot-recycler-view.ios.template_debug.arm64.double.dylib"
 ios.arm64.single.release = "./ios/libgodot-recycler-view.ios.template_release.arm64.dylib"
-ios.arm64.double.release = "./ios/libgodot-recycler-view.ios.template_release.arm64.double.dylib"
 
 windows.x86_32.single.debug = "./windows/godot-recycler-view.windows.template_debug.x86_32.dll"
-windows.x86_32.double.debug = "./windows/godot-recycler-view.windows.template_debug.x86_32.double.dll"
 windows.x86_32.single.release = "./windows/godot-recycler-view.windows.template_release.x86_32.dll"
-windows.x86_32.double.release = "./windows/godot-recycler-view.windows.template_release.x86_32.double.dll"
 
 windows.x86_64.single.debug = "./windows/godot-recycler-view.windows.template_debug.x86_64.dll"
-windows.x86_64.double.debug = "./windows/godot-recycler-view.windows.template_debug.x86_64.double.dll"
 windows.x86_64.single.release = "./windows/godot-recycler-view.windows.template_release.x86_64.dll"
-windows.x86_64.double.release = "./windows/godot-recycler-view.windows.template_release.x86_64.double.dll"
+
+linux.x86_32.single.debug = "./linux/libgodot-recycler-view.linux.template_debug.x86_32.so"
+linux.x86_32.single.release = "./linux/libgodot-recycler-view.linux.template_release.x86_32.so"
 
 linux.x86_64.single.debug = "./linux/libgodot-recycler-view.linux.template_debug.x86_64.so"
-linux.x86_64.double.debug = "./linux/libgodot-recycler-view.linux.template_debug.x86_64.double.so"
 linux.x86_64.single.release = "./linux/libgodot-recycler-view.linux.template_release.x86_64.so"
-linux.x86_64.double.release = "./linux/libgodot-recycler-view.linux.template_release.x86_64.double.so"
+
+linux.arm32.single.debug = "./linux/libgodot-recycler-view.linux.template_debug.arm32.so"
+linux.arm32.single.release = "./linux/libgodot-recycler-view.linux.template_release.arm32.so"
 
 linux.arm64.single.debug = "./linux/libgodot-recycler-view.linux.template_debug.arm64.so"
-linux.arm64.double.debug = "./linux/libgodot-recycler-view.linux.template_debug.arm64.double.so"
 linux.arm64.single.release = "./linux/libgodot-recycler-view.linux.template_release.arm64.so"
-linux.arm64.double.release = "./linux/libgodot-recycler-view.linux.template_release.arm64.double.so"
 
-linux.rv64.single.debug = "./linux/libgodot-recycler-view.linux.template_debug.rv64.so"
-linux.rv64.double.debug = "./linux/libgodot-recycler-view.linux.template_debug.rv64.double.so"
-linux.rv64.single.release = "./linux/libgodot-recycler-view.linux.template_release.rv64.so"
-linux.rv64.double.release = "./linux/libgodot-recycler-view.linux.template_release.rv64.double.so"
+android.x86_32.single.debug = "./android/libgodot-recycler-view.android.template_debug.x86_32.so"
+android.x86_32.single.release = "./android/libgodot-recycler-view.android.template_release.x86_32.so"
 
 android.x86_64.single.debug = "./android/libgodot-recycler-view.android.template_debug.x86_64.so"
-android.x86_64.double.debug = "./android/libgodot-recycler-view.android.template_debug.x86_64.double.so"
 android.x86_64.single.release = "./android/libgodot-recycler-view.android.template_release.x86_64.so"
-android.x86_64.double.release = "./android/libgodot-recycler-view.android.template_release.x86_64.double.so"
+
+android.arm32.single.debug = "./android/libgodot-recycler-view.android.template_debug.arm32.so"
+android.arm32.single.release = "./android/libgodot-recycler-view.android.template_release.arm32.so"
 
 android.arm64.single.debug = "./android/libgodot-recycler-view.android.template_debug.arm64.so"
-android.arm64.double.debug = "./android/libgodot-recycler-view.android.template_debug.arm64.double.so"
 android.arm64.single.release = "./android/libgodot-recycler-view.android.template_release.arm64.so"
-android.arm64.double.release = "./android/libgodot-recycler-view.android.template_release.arm64.double.so"
 
-web.wasm32.single.debug = "./web/libgodot-recycler-view.web.template_debug.wasm32.nothreads.wasm"
-web.wasm32.double.debug = "./web/libgodot-recycler-view.web.template_debug.wasm32.double.nothreads.wasm"
-web.wasm32.single.release = "./web/libgodot-recycler-view.web.template_release.wasm32.nothreads.wasm"
-web.wasm32.double.release = "./web/libgodot-recycler-view.web.template_release.wasm32.double.nothreads.wasm"
+web.wasm32.single.debug = "./web/libgodot-recycler-view.web.template_debug.wasm32.wasm"
+web.wasm32.single.release = "./web/libgodot-recycler-view.web.template_release.wasm32.wasm"
