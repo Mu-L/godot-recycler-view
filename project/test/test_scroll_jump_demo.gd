@@ -52,9 +52,13 @@ func test_smooth_scroll_does_not_create() -> void:
 	var adapter: _DEMO._NumberedAdapter = s.adapter
 	var created_before := adapter.created
 	rv.smooth_scroll_to_position(100, 0.6)
-	# Wait for the settle animation to finish.
-	while rv.get_scroll_state() == RecyclerView.SCROLL_STATE_SETTLING:
+	# Wait for the settle animation to finish. Bounded on purpose: a settle that
+	# never converges must fail on the assertion below, not hang the whole run.
+	var frames := 0
+	while rv.get_scroll_state() == RecyclerView.SCROLL_STATE_SETTLING and frames < 2000:
 		await get_tree().process_frame
+		frames += 1
+	assert_that(frames).is_less(2000)
 	assert_that(rv.get_scroll_offset()).is_equal(100 * 40)
 	assert_that(adapter.created).is_equal(created_before)
 	rv.free_items()

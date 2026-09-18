@@ -304,8 +304,13 @@ func test_smooth_scroll_reanchors_after_settle() -> void:
 	var s := await _make_setup(texts)
 	var rv: RecyclerView = s.rv
 	rv.smooth_scroll_to_position(100, 0.3)
-	while rv.get_scroll_state() == RecyclerView.SCROLL_STATE_SETTLING:
+	# Bounded on purpose: a settle that never converges must fail on the
+	# assertion below, not hang the whole run.
+	var frames := 0
+	while rv.get_scroll_state() == RecyclerView.SCROLL_STATE_SETTLING and frames < 2000:
 		await get_tree().process_frame
+		frames += 1
+	assert_that(frames).is_less(2000)
 	assert_that(rv.get_scroll_offset()).is_equal(rv.get_layout().get_item_offset(100))
 	rv.free_items()
 	rv.free()
