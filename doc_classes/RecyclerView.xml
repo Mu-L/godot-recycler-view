@@ -331,8 +331,8 @@ the bottom of a chat list.</description>
 ([code]-1[/code] = the bar's default step; the thumb drag itself is ratio-mapped, not stepped).</member>
 		<member name="scroll_vertical_custom_step" type="float" setter="set_vertical_custom_step" getter="get_vertical_custom_step" default="-1.0">Pixel step for the vertical scroll bar's wheel/arrow/click interactions
 ([code]-1[/code] = the bar's default step; the thumb drag itself is ratio-mapped, not stepped).</member>
-		<member name="horizontal_scroll_mode" type="int" setter="set_horizontal_scroll_mode" getter="get_horizontal_scroll_mode" default="1">Scroll bar mode for horizontal layouts (see [method set_horizontal_scroll_mode]).</member>
-		<member name="vertical_scroll_mode" type="int" setter="set_vertical_scroll_mode" getter="get_vertical_scroll_mode" default="1">Scroll bar mode for vertical layouts (see [method set_vertical_scroll_mode]).</member>
+		<member name="horizontal_scroll_mode" type="int" setter="set_horizontal_scroll_mode" getter="get_horizontal_scroll_mode" default="0">Scroll bar mode for horizontal layouts (see [method set_horizontal_scroll_mode]).</member>
+		<member name="vertical_scroll_mode" type="int" setter="set_vertical_scroll_mode" getter="get_vertical_scroll_mode" default="0">Scroll bar mode for vertical layouts (see [method set_vertical_scroll_mode]).</member>
 		<member name="scroll_bar_auto_hide" type="bool" setter="set_scroll_bar_auto_hide" getter="get_scroll_bar_auto_hide" default="true">Whether the scroll bar fades out while the RV sits idle (Android-style). Only
 It applies to every mode that shows a bar (Inset/Reserve keep their carved space
 either way).</member>
