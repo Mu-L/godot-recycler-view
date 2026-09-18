@@ -125,6 +125,14 @@ jobs:
           done
           cp project/bin/godot_recycler_view.gdextension package/
 
+      # The package is the thing users install, so its contents and the
+      # descriptor must agree: every declared binary present (or the editor
+      # reports a broken extension) and every produced binary declared (or it
+      # ships in the zip and is never loaded). This is the check the .gdextension
+      # list was always meant to have.
+      - name: Verify package against the descriptor
+        run: ./script/scan.sh package/godot_recycler_view.gdextension
+
       - name: Upload merged package
         uses: actions/upload-artifact@v4
         with:
